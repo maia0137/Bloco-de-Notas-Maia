@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bloco de Notas</title>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            /* Temas */
+            --c-bg-light: #ffffff; --c-text-light: #1f1f1f; --c-border-light: #e5e5e5; --c-accent-light: #0074e0; --c-secondary-light: #f9f9f9; --c-hover-light: #f0f0f0; --c-active-light: #e0e0e0;
+            --c-bg-dark: #1a1a1a; --c-text-dark: #f0f0f0; --c-border-dark: #444444; --c-accent-dark: #60cdff; --c-secondary-dark: #2a2a2a; --c-hover-dark: #3a3a3a; --c-active-dark: #404040;
+            --c-bg-sepia: #f4f0e8; --c-text-sepia: #4a3b2f; --c-border-sepia: #d0c8b8; --c-accent-sepia: #6e5847; --c-secondary-sepia: #e9e4d9; --c-hover-sepia: #d8d2c6; --c-active-sepia: #c8c0b3;
+            
+            /* Fontes */
+            --f-sans-serif: 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            --f-serif: Georgia, 'Times New Roman', serif;
+            --f-mono: 'Cascadia Mono', 'Consolas', 'Roboto Mono', 'Courier New', monospace;
+            
+            --shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        html { height: 100%; }
+        body {
+            background: var(--bg-primary); color: var(--text-primary);
+            font-family: var(--font-editor);
+            height: 100dvh; min-height: 100%;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation; /* Remove atraso de toque */
+        }
+
+        body.theme-light { --bg-primary: var(--c-bg-light); --text-primary: var(--c-text-light); --border: var(--c-border-light); --accent: var(--c-accent-light); --bg-secondary: var(--c-secondary-light); --hover: var(--c-hover-light); --active: var(--c-active-light); }
+        body.theme-dark  { --bg-primary: var(--c-bg-dark);  --text-primary: var(--c-text-dark);  --border: var(--c-border-dark);  --accent: var(--c-accent-dark);  --bg-secondary: var(--c-secondary-dark);  --hover: var(--c-hover-dark);  --active: var(--c-active-dark);  }
+        body.theme-sepia { --bg-primary: var(--c-bg-sepia); --text-primary: var(--c-text-sepia); --border: var(--c-border-sepia); --accent: var(--c-accent-sepia); --bg-secondary: var(--c-secondary-sepia); --hover: var(--c-hover-sepia); --active: var(--c-active-sepia); }
+
+        body.font-sans-serif { --font-editor: var(--f-sans-serif); }
+        body.font-serif      { --font-editor: var(--f-serif); }
+        body.font-mono       { --font-editor: var(--f-mono); }
+        
+        .header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); box-shadow: var(--shadow); z-index: 10; }
+        .title-bar { display: flex; align-items: center; padding: 8px 16px; gap: 12px; }
+        .app-icon { width: 20px; height: 20px; }
+        .app-title { font-size: 13px; font-weight: 400; flex: 1; font-family: 'Segoe UI', 'Roboto', sans-serif; }
+        .menu-bar { display: flex; padding: 0 8px; height: 40px; align-items: center; gap: 2px; flex-wrap: wrap; }
+        .menu-item { padding: 6px 12px; font-size: 13px; color: var(--text-primary); background: none; border: none; border-radius: 4px; cursor: pointer; transition: background 0.1s; font-family: 'Segoe UI', 'Roboto', sans-serif; touch-action: manipulation; }
+        .menu-item:active { background: var(--active); }
+        
+        .editor-container { overflow: auto; -webkit-overflow-scrolling: touch; }
+        #editor {
+            width: 100%; height: 100%; padding: 16px 20px;
+            background: var(--bg-primary); border: none; outline: none;
+            color: var(--text-primary); font-size: 14px; line-height: 1.6;
+            resize: none; font-family: inherit; font-weight: 400;
+        }
+        /* Placeholder com contraste adequado */
+        #editor::placeholder {
+            color: var(--placeholder-color);
+            opacity: 1; /* Firefox */
+        }
+        body.theme-light { --placeholder-color: #6b6b6b; }
+        body.theme-dark  { --placeholder-color: #bbbbbb; }
+        body.theme-sepia { --placeholder-color: #8b7b6b; }
+        
+        .status-bar {
+            background: var(--bg-secondary); border-top: 1px solid var(--border);
+            padding: 4px 16px; display: flex; align-items: center;
+            flex-wrap: wrap; gap: 10px 16px;
+            font-size: 12px; color: var(--text-primary);
+            min-height: 28px;
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+        }
+        .stat-item strong { margin-right: 3px; font-weight: 600; }
+
+        .save-popup { position: fixed; top: 70px; right: 20px; background: var(--bg-secondary); padding: 10px 16px; border-radius: 8px; font-size: 13px; color: var(--text-primary); opacity: 0; transform: translateY(-10px); transition: all 0.2s; pointer-events: none; box-shadow: var(--shadow); border: 1px solid var(--border); z-index: 2000; }
+        .save-popup.show { opacity: 1; transform: translateY(0); }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 1000; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal { background: var(--bg-primary); border-radius: 8px; padding: 24px; min-width: 280px; max-width: 90vw; box-shadow: 0 8px 32px rgba(0,0,0,0.2); transform: scale(0.95); transition: transform 0.2s; color: var(--text-primary); }
+        .modal-overlay.show .modal { transform: scale(1); }
+        .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 20px; }
+        .modal-buttons { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+        .btn { padding: 6px 20px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer; transition: all 0.1s; font-family: 'Segoe UI', 'Roboto', sans-serif; }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-secondary { background: var(--hover); color: var(--text-primary); }
+        .btn:active { opacity: 0.8; }
+
+        /* Ajustes para contraste extra no tema escuro */
+        body.theme-dark .menu-item:hover { background: var(--hover); }
+        body.theme-dark .btn-secondary { background: #3a3a3a; color: #f0f0f0; }
+    </style>
+</head>
+<body class="theme-light font-mono">
+    <div class="header">
+        <div class="title-bar">
+            <svg class="app-icon" viewBox="0 0 24 24" fill="var(--accent)"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/></svg>
+            <span class="app-title">Bloco de Notas</span>
+        </div>
+        <div class="menu-bar">
+            <button id="btn-open" class="menu-item">Abrir</button>
+            <button id="btn-save" class="menu-item">Salvar</button>
+            <button id="btn-copy" class="menu-item">Copiar</button>
+            <button id="btn-font" class="menu-item">Fontes</button>
+            <button id="btn-theme" class="menu-item">Temas</button>
+        </div>
+    </div>
+    
+    <!-- Input oculto para abrir arquivos -->
+    <input type="file" id="fileInput" accept=".txt,.md,.text,text/plain,text/markdown" style="display: none;">
+    
+    <div class="editor-container">
+        <textarea id="editor" placeholder="Digite algo..." autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true"></textarea>
+    </div>
+    
+    <div class="status-bar">
+        <span id="lineInfo">Ln 1, Col 1</span>
+        <span class="stat-item"><strong id="word-count">0</strong> Palavras</span>
+        <span class="stat-item"><strong id="letter-count">0</strong> Letras</span>
+        <span class="stat-item"><strong id="space-count">0</strong> Espaços</span>
+        <span class="stat-item"><strong id="paragraph-count">0</strong> Parágrafos</span>
+        <span class="stat-item">⏱️ <strong id="reading-time">0 min</strong></span>
+    </div>
+    
+    <div class="save-popup" id="savePopup">✓ Pronto!</div>
+    
+    <!-- Modal de salvamento -->
+    <div class="modal-overlay" id="modalSave">
+        <div class="modal">
+            <h3>Salvar Arquivo</h3>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" id="btn-download-txt">Salvar .txt</button>
+                <button class="btn btn-primary" id="btn-download-md">Salvar .md</button>
+                <button class="btn btn-secondary" id="btn-cancel-save">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmação para abrir arquivo -->
+    <div class="modal-overlay" id="modalConfirm">
+        <div class="modal">
+            <h3 id="modalConfirmTitle">Abrir Arquivo</h3>
+            <p id="modalConfirmMsg" style="margin-bottom: 20px; font-size: 14px;">O texto atual será substituído. Deseja continuar?</p>
+            <div class="modal-buttons">
+                <button class="btn btn-primary" id="btn-confirm-open">Sim, abrir</button>
+                <button class="btn btn-secondary" id="btn-cancel-confirm">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const editor = document.getElementById('editor');
+        const savePopup = document.getElementById('savePopup');
+        const modalSave = document.getElementById('modalSave');
+        const modalConfirm = document.getElementById('modalConfirm');
+        const fileInput = document.getElementById('fileInput');
+        const lineInfo = document.getElementById('lineInfo');
+        const body = document.body;
+        
+        const statsElements = {
+            word: document.getElementById('word-count'),
+            letter: document.getElementById('letter-count'),
+            space: document.getElementById('space-count'),
+            paragraph: document.getElementById('paragraph-count'),
+            readingTime: document.getElementById('reading-time')
+        };
+        
+        const themes = ['theme-light', 'theme-dark', 'theme-sepia'];
+        const fonts = ['font-mono', 'font-sans-serif', 'font-serif'];
+        let currentThemeIndex = 0;
+        let currentFontIndex = 0;
+
+        // Tempo médio de leitura (palavras por minuto)
+        const WORDS_PER_MINUTE = 200;
+
+        function cycleClass(element, classList, currentIndex, storageKey) {
+            element.classList.remove(classList[currentIndex]);
+            const nextIndex = (currentIndex + 1) % classList.length;
+            element.classList.add(classList[nextIndex]);
+            localStorage.setItem(storageKey, classList[nextIndex]);
+            return nextIndex;
+        }
+
+        function updateAllStats() {
+            const text = editor.value;
+            const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+            const letters = text.replace(/\s/g, '').length;
+            const spaces = (text.match(/ /g) || []).length;
+            const paragraphs = text.split(/\n+/).filter(p => p.trim().length > 0).length;
+            
+            statsElements.word.textContent = words;
+            statsElements.letter.textContent = letters;
+            statsElements.space.textContent = spaces;
+            statsElements.paragraph.textContent = paragraphs;
+
+            // Tempo de leitura
+            const minutes = Math.ceil(words / WORDS_PER_MINUTE);
+            statsElements.readingTime.textContent = minutes === 0 ? '0 min' : (minutes === 1 ? '1 min' : minutes + ' min');
+            
+            // Posição do cursor
+            const textToCursor = text.substring(0, editor.selectionStart);
+            const lines = textToCursor.split('\n');
+            const currentLine = lines.length;
+            const currentColumn = lines[lines.length - 1].length + 1;
+            lineInfo.textContent = `Ln ${currentLine}, Col ${currentColumn}`;
+        }
+
+        function autoSave() {
+            try { localStorage.setItem('notepad_content', editor.value); } 
+            catch (e) { console.error('LocalStorage não disponível'); }
+        }
+
+        // Eventos corrigidos
+        editor.addEventListener('input', () => { updateAllStats(); autoSave(); });
+        editor.addEventListener('select', updateAllStats); // Corrigido de 'selectionchange' para 'select'
+        editor.addEventListener('click', updateAllStats);
+        editor.addEventListener('keyup', updateAllStats);
+        // Atualiza também no foco, para garantir sincronia
+        editor.addEventListener('focus', updateAllStats);
+
+        function showPopup(message) {
+            savePopup.textContent = message;
+            savePopup.classList.add('show');
+            setTimeout(() => savePopup.classList.remove('show'), 2000);
+        }
+
+        function closeSaveModal() { modalSave.classList.remove('show'); }
+        function openSaveModal() { modalSave.classList.add('show'); }
+
+        // Função de cópia robusta com fallback
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showPopup('✓ Copiado para a área de transferência');
+            } catch (err) {
+                // Fallback para WebViews antigos
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try {
+                    document.execCommand('copy');
+                    showPopup('✓ Copiado (fallback)');
+                } catch (e) {
+                    showPopup('⚠️ Não foi possível copiar');
+                }
+                document.body.removeChild(ta);
+            }
+        }
+
+        // --- Abrir arquivo ---
+        function openFile() {
+            if (editor.value.trim() !== '') {
+                // Mostra modal de confirmação
+                modalConfirm.classList.add('show');
+            } else {
+                fileInput.click();
+            }
+        }
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                editor.value = ev.target.result;
+                updateAllStats();
+                autoSave();
+                showPopup('✓ Arquivo aberto');
+            };
+            reader.onerror = () => showPopup('Erro ao ler arquivo');
+            reader.readAsText(file);
+            // Limpa input para permitir abrir o mesmo arquivo novamente
+            fileInput.value = '';
+        });
+
+        // Botões de confirmação
+        document.getElementById('btn-confirm-open').addEventListener('click', () => {
+            modalConfirm.classList.remove('show');
+            fileInput.click();
+        });
+        document.getElementById('btn-cancel-confirm').addEventListener('click', () => {
+            modalConfirm.classList.remove('show');
+        });
+
+        // --- Eventos dos botões principais ---
+        document.getElementById('btn-open').addEventListener('click', openFile);
+        document.getElementById('btn-save').addEventListener('click', openSaveModal);
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            if (editor.value) {
+                copyToClipboard(editor.value);
+            } else {
+                showPopup('Nada para copiar');
+            }
+        });
+        document.getElementById('btn-font').addEventListener('click', () => {
+            currentFontIndex = cycleClass(body, fonts, currentFontIndex, 'notepadFont');
+            let fontName = fonts[currentFontIndex].split('-')[1];
+            showPopup(`✓ Fonte: ${fontName.charAt(0).toUpperCase() + fontName.slice(1)}`);
+        });
+        document.getElementById('btn-theme').addEventListener('click', () => {
+            currentThemeIndex = cycleClass(body, themes, currentThemeIndex, 'notepadTheme');
+            let themeName = themes[currentThemeIndex].split('-')[1];
+            showPopup(`✓ Tema: ${themeName.charAt(0).toUpperCase() + themeName.slice(1)}`);
+        });
+
+        // --- Download de arquivos ---
+        function downloadFile(filename, content, mimeType) {
+            const el = document.createElement('a');
+            el.href = URL.createObjectURL(new Blob([content], { type: mimeType }));
+            el.download = filename;
+            document.body.appendChild(el);
+            el.click();
+            document.body.removeChild(el);
+            URL.revokeObjectURL(el.href);
+            closeSaveModal();
+        }
+        document.getElementById('btn-download-txt').addEventListener('click', () => downloadFile('nota.txt', editor.value, 'text/plain'));
+        document.getElementById('btn-download-md').addEventListener('click', () => downloadFile('nota.md', editor.value, 'text/markdown'));
+        document.getElementById('btn-cancel-save').addEventListener('click', closeSaveModal);
+
+        // --- Inicialização ---
+        function initializeApp() {
+            try { editor.value = localStorage.getItem('notepad_content') || ''; } catch (e) {}
+            const savedTheme = localStorage.getItem('notepadTheme') || themes[0];
+            body.classList.remove(themes[0]);
+            body.classList.add(savedTheme);
+            currentThemeIndex = themes.indexOf(savedTheme);
+            const savedFont = localStorage.getItem('notepadFont') || fonts[0];
+            body.classList.remove(fonts[0]);
+            body.classList.add(savedFont);
+            currentFontIndex = fonts.indexOf(savedFont);
+            updateAllStats();
+            setTimeout(() => editor.focus(), 100);
+        }
+        initializeApp();
+    });
+    </script>
+</body>
+</html>
